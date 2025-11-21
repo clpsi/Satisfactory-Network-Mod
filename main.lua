@@ -490,18 +490,22 @@ for i in pairs(a) do
 		end
 	end
 
+	neededRes[#neededRes][#neededRes[#neededRes]+1] = {}
 	for i in pairs(difRec) do
-		neededRes[#neededRes][#neededRes[#neededRes]+1] = {}
+		neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1] = {}
 		for e in pairs(difRec[i]) do
 			if difRec[i][e][4] == "c" then -- all constr - unique rec * ratio
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
-				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
+				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
+				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
 			elseif difRec[i][e][4] == "a" then
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
-				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
+				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
+				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
 			elseif difRec[i][e][4] == "m" then
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
-				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
+				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
+				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
 			end
 		end
 	end
@@ -510,11 +514,14 @@ end
 --determines the best recipe
 for i in pairs(neededRes) do
 	for e in pairs(neededRes[i]) do
+		print(" ")
 		for f in pairs(neededRes[i][e]) do
-			
+			for g in pairs(neededRes[i][e][f]) do
+				print(neededRes[i][e][f][g][1], neededRes[i][e][f][g][2], neededRes[i][e][f][g][3])
+			end
 		end
 	end
-end--]]
+end
 
 print("Computer finished at", computer.magicTime())
 c.stopComputer(c)
