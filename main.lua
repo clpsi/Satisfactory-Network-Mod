@@ -469,36 +469,50 @@ for i in pairs(a) do
 	print("c:", a[i][1], "a:", a[i][2], "m:", a[i][3]) --not really needed?
 end--]]
 
-
-local difRec = {}
---for i in pairs(a) do
-	local i = 1
-	for e in pairs(a[i]) do difRec[#difRec+1] = {} end
+--calculates the best amount of elements used per module for each recipe
+local neededRes = {}
+for i in pairs(a) do
+	neededRes[#neededRes+1] = {}
+	local difRec = {}
+	local total = {}
+	for e in pairs(a[i]) do difRec[#difRec+1] = {} total[#total+1] = 0 end
 	for e in pairs(b[i]) do
 		local num = b[i][e][2]
 		if b[i][e][3] == "c" then
-			difRec[1][#difRec[#difRec]+1] = math.ceil(num) --nicht alle möglichen c rezepte?
+			difRec[1][#difRec[1]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
+			total[1] = total[1] + num
 		elseif b[i][e][3] == "a" then
-			difRec[2][#difRec[#difRec]+1] = math.ceil(num)
+			difRec[2][#difRec[2]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
+			total[2] = total[2] + num
 		elseif b[i][e][3] == "m" then
-			difRec[3][#difRec[#difRec]+1] = math.ceil(num)
+			difRec[3][#difRec[3]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
+			total[3] = total[3] + num
 		end
 	end
---end
 
-neededRes = {}
-for i in pairs(difRec) do
-	neededRes[#neededRes+1] = {}
-	for e in pairs(difRec[i]) do
-		print(difRec[i][e])
-		if b[i][e][3] == "c" then
-			neededRes[#neededRes][#neededRes[#neededRes]+1] = (availRes[i] - #difRec[i])*(a[i][1]/b[i][e][2])
-		elseif b[i][e][3] == "a" then
-			neededRes[#neededRes][#neededRes[#neededRes]+1] = (availRes[i] - #difRec[i])*(a[i][2]/b[i][e][2])
-		elseif b[i][e][3] == "m" then
-			neededRes[#neededRes][#neededRes[#neededRes]+1] = (availRes[i] - #difRec[i])*(a[i][3]/b[i][e][2])
+	for i in pairs(difRec) do
+		neededRes[#neededRes][#neededRes[#neededRes]+1] = {}
+		for e in pairs(difRec[i]) do
+			if difRec[i][e][4] == "c" then -- all constr - unique rec * ratio
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
+				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+			elseif difRec[i][e][4] == "a" then
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
+				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+			elseif difRec[i][e][4] == "m" then
+				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1]
+				= (availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i])
+			end
 		end
-		print(neededRes[#neededRes][#neededRes[#neededRes]])
+	end
+end
+
+--determines the best recipe
+for i in pairs(neededRes) do
+	for e in pairs(neededRes[i]) do
+		for f in pairs(neededRes[i][e]) do
+			
+		end
 	end
 end--]]
 
