@@ -369,33 +369,6 @@ for x in pairs(rRecipes) do
 	local res = rRecipes[x][#rRecipes[x]].name
 	local map = {{res, 1.0}}
 	local flag = 0
-	for _, r in pairs(cRecipes) do --solely to add to result
-		local prods = r:getProducts()
-		for _, p in pairs(prods) do
-			if p.type.name == res then
-				a[#a][1] = a[#a][1] + 1
-			end
-		end
-	end
-	if flag ~= 1 then
-		for _, r in pairs(aRecipes) do
-			local prods = r:getProducts()
-			for _, p in pairs(prods) do
-				if p.type.name == res then
-					a[#a][2] = a[#a][2] + 1
-				end
-			end
-		end
-	elseif flag ~= 2 then
-		for _, r in pairs(mRecipes) do
-			local prods = r:getProducts()
-			for _, p in pairs(prods) do
-				if p.type.name == res then
-					a[#a][3] = a[#a][3] + 1
-				end
-			end
-		end
-	end
 	for y = #rRecipes[x], 1, -1 do --_, item in pairs(rRecipes[x]) do 
 		local item = rRecipes[x][y]
 		local ing = item:getIngredients()
@@ -461,8 +434,38 @@ for x in pairs(rRecipes) do
 				break
 			end
 		end
-	end	
-end end
+	end end
+	for _, r in pairs(cRecipes) do --solely to add to result
+		local prods = r:getProducts()
+		for _, p in pairs(prods) do
+			if p.type.name == res then
+				a[#a][1] = a[#a][1] + 1
+				b[#b][#b[#b]] = {p.type.name, 1.0, "c"}
+			end
+		end
+	end
+	if flag ~= 1 then
+		for _, r in pairs(aRecipes) do
+			local prods = r:getProducts()
+			for _, p in pairs(prods) do
+				if p.type.name == res then
+					a[#a][2] = a[#a][2] + 1
+					b[#b][#b[#b]] = {p.type.name, 1.0, "a"}
+				end
+			end
+		end
+	elseif flag ~= 2 then
+		for _, r in pairs(mRecipes) do
+			local prods = r:getProducts()
+			for _, p in pairs(prods) do
+				if p.type.name == res then
+					a[#a][3] = a[#a][3] + 1
+					b[#b][#b[#b]] = {p.type.name, 1.0, "m"}
+				end
+			end
+		end
+	end
+end
 --[[
 for i in pairs(a) do
 	for e in pairs(b[i]) do print(b[i][e][1],  b[i][e][2], b[i][e][3]) end
@@ -511,15 +514,40 @@ for i in pairs(a) do
 	end
 end
 
---determines the best recipe
+--[[
 for i in pairs(neededRes) do
-	for e in pairs(neededRes[i]) do
-		print(" ")
+	for e in pairs(neededRes[i]) do print(" ")
 		for f in pairs(neededRes[i][e]) do
 			for g in pairs(neededRes[i][e][f]) do
 				print(neededRes[i][e][f][g][1], neededRes[i][e][f][g][2], neededRes[i][e][f][g][3])
 			end
 		end
+	end
+end--]]
+
+--determines the best recipe
+
+local brsf = 0
+local bri = {-1, -1}
+for i in pairs(neededRes) do
+	for e in pairs(neededRes[i]) do
+		for f in pairs(neededRes[i][e]) do
+			for g in pairs(neededRes[i][e][f]) do
+				if neededRes[i][e][f][g][2] == rRecipe then
+					if neededRes[i][e][f][g][1] > brsf then
+						brsf = neededRes[i][e][f][g][1]
+						bri[1] = i
+						bri[2] = e
+					end
+				end
+			end
+		end
+	end
+end
+
+for f in pairs(neededRes[bri[1]][bri[2]]) do
+	for g in pairs(neededRes[bri[1]][bri[2]][f]) do
+		print(neededRes[bri[1]][bri[2]][f][g][1], neededRes[bri[1]][bri[2]][f][g][2], neededRes[bri[1]][bri[2]][f][g][3])
 	end
 end
 
