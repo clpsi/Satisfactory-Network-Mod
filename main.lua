@@ -388,7 +388,7 @@ for x in pairs(rRecipes) do
 						end
 						local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration)) --verhältnis von davor
 						a[#a][1] = a[#a][1] + math.ceil(num)
-						b[#b][#b[#b]] = {m.type.name, num, "c"}
+						b[#b][#b[#b]] = {m, num, "c"}
 						map[#map+1] = {m.type.name, num}
 						flag = 1
 						break
@@ -406,7 +406,7 @@ for x in pairs(rRecipes) do
 							end
 							local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration))
 							a[#a][2] = a[#a][2] + math.ceil(num)
-							b[#b][#b[#b]] = {m.type.name, num, "a"}
+							b[#b][#b[#b]] = {m, num, "a"}
 							map[#map+1] = {m.type.name, num}
 							flag = 2
 							break
@@ -424,7 +424,7 @@ for x in pairs(rRecipes) do
 							end
 							local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration))
 							a[#a][3] = a[#a][3] + math.ceil(num)
-							b[#b][#b[#b]] = {m.type.name, num, "m"}
+							b[#b][#b[#b]] = {m, num, "m"}
 							map[#map+1] = {m.type.name, num}
 							flag = 3
 							break
@@ -440,7 +440,7 @@ for x in pairs(rRecipes) do
 		for _, p in pairs(prods) do
 			if p.type.name == res then
 				a[#a][1] = a[#a][1] + 1
-				b[#b][#b[#b]] = {p.type.name, 1.0, "c"}
+				b[#b][#b[#b]] = {p, 1.0, "c"}
 			end
 		end
 	end
@@ -450,7 +450,7 @@ for x in pairs(rRecipes) do
 			for _, p in pairs(prods) do
 				if p.type.name == res then
 					a[#a][2] = a[#a][2] + 1
-					b[#b][#b[#b]] = {p.type.name, 1.0, "a"}
+					b[#b][#b[#b]] = {p, 1.0, "a"}
 				end
 			end
 		end
@@ -460,7 +460,7 @@ for x in pairs(rRecipes) do
 			for _, p in pairs(prods) do
 				if p.type.name == res then
 					a[#a][3] = a[#a][3] + 1
-					b[#b][#b[#b]] = {p.type.name, 1.0, "m"}
+					b[#b][#b[#b]] = {p, 1.0, "m"}
 				end
 			end
 		end
@@ -533,7 +533,7 @@ for i in pairs(neededRes) do
 	for e in pairs(neededRes[i]) do
 		for f in pairs(neededRes[i][e]) do
 			for g in pairs(neededRes[i][e][f]) do
-				if neededRes[i][e][f][g][2] == rRecipe then
+				if neededRes[i][e][f][g][2].type.name == rRecipe then
 					if neededRes[i][e][f][g][1] > brsf then
 						brsf = neededRes[i][e][f][g][1]
 						bri[1] = i
@@ -547,7 +547,7 @@ end
 
 for f in pairs(neededRes[bri[1]][bri[2]]) do
 	for g in pairs(neededRes[bri[1]][bri[2]][f]) do
-		print(neededRes[bri[1]][bri[2]][f][g][1], neededRes[bri[1]][bri[2]][f][g][2], neededRes[bri[1]][bri[2]][f][g][3])
+		print(neededRes[bri[1]][bri[2]][f][g][1], neededRes[bri[1]][bri[2]][f][g][2].type.name, neededRes[bri[1]][bri[2]][f][g][3])
 	end
 end
 
