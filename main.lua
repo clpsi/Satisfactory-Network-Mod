@@ -1,8 +1,11 @@
 local c = computer.getInstance()
 local rRecipe = "Smart Plating"
-local availRes = {10, 5, 2}
+local availRes = {50, 10, 2}
 c.startComputer(c)
-print("Computer started at", computer.magicTime())
+print("Loading ...")
+local _, _, time = computer.magicTime()
+local _, _, _, _, mi, s, ms = time:match("(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)%.(%d+)Z")
+local starttime = mi * 60 * 1000 + s * 1000 + ms
 
 --Lines marked with ! are static, as in non adaptable to new modules
 
@@ -109,7 +112,6 @@ function getComponentsByClass( class, getOne )
                 end
             end
         end
-
     end
 
     if ( getOne ) then
@@ -148,9 +150,7 @@ end
 
 
 
-
 --- End of Helpfunctions
-
 
 
 
@@ -164,9 +164,11 @@ if #manufacturer > 0 then mRecipes = manufacturer[1]:getRecipes() else mRecipes 
 local zw = {}
 zw[1] = rRecipe
 if zw[1] == nil then computer.panic("Target Recipe not recognized: ", zw[1]) end
-
 rRecipes = {}
+
 --first gets all possible recipes to the string, then searches ingredients for the last recipe and adds it to the loop
+
+print("Allocating all possible recipes ...")
 for _, res in pairs(zw) do
 	local recipes = {}
 	local flag = 0
@@ -257,11 +259,14 @@ for _, res in pairs(zw) do
 		end
 	end
 end
+print("Done")
 
 --here all possible recipes once (but not sorted aka in which order they go)
 for r in pairs(rRecipes) do rRecipes[r] = sort(rRecipes[r]) end
 --for r in pairs(rRecipes) do print(r) for t in pairs(rRecipes[r]) do print(rRecipes[r][t].name) end end
 
+
+print("Sorting recipes for efficiency ...")
 local aimRecipe = {}
 if #rRecipes > 0 then
 	for _, r in pairs(rRecipes[#rRecipes]) do
@@ -327,6 +332,7 @@ for c in pairs(cPath) do
 		end
 	end
 end
+print("Almost done")
 --[[ --all possible Recipes now linked in order
 for c in pairs(cPath) do 
 		for d in pairs(cPath[c]) do 
@@ -356,11 +362,12 @@ for i in pairs(cPath[#cPath]) do
 	end
 	zw = {}
 end
-
+print("Done")
 --for r in pairs(rRecipes) do for t in pairs(rRecipes[r]) do print(rRecipes[r][t].name) end end
 
---Recipe List finally done, now start of calc
 
+print("Calculating ratio of recipe to modules ...")
+--Recipe List finally done, now start of calc
 local a = {}
 local b = {}
 for x in pairs(rRecipes) do
@@ -466,13 +473,15 @@ for x in pairs(rRecipes) do
 		end
 	end
 end
+print("Done")
 --[[
 for i in pairs(a) do
 	for e in pairs(b[i]) do print(b[i][e][1],  b[i][e][2], b[i][e][3]) end
 	print("c:", a[i][1], "a:", a[i][2], "m:", a[i][3]) --not really needed?
 end--]]
 
---calculates the best amount of elements used per module for each recipe
+print("Determine which recipe has the best ratio ...")
+--calculates the best amount of elements used per module for each recipe, first better ordering tho
 local neededRes = {}
 for i in pairs(a) do
 	neededRes[#neededRes+1] = {}
@@ -513,7 +522,7 @@ for i in pairs(a) do
 		end
 	end
 end
-
+print("Almost done")
 --[[
 for i in pairs(neededRes) do
 	for e in pairs(neededRes[i]) do print(" ")
@@ -544,12 +553,17 @@ for i in pairs(neededRes) do
 		end
 	end
 end
-
+print("Done, the winner is:")
+print(" ")
 for f in pairs(neededRes[bri[1]][bri[2]]) do
 	for g in pairs(neededRes[bri[1]][bri[2]][f]) do
 		print(neededRes[bri[1]][bri[2]][f][g][1], neededRes[bri[1]][bri[2]][f][g][2].type.name, neededRes[bri[1]][bri[2]][f][g][3])
 	end
 end
+print(" ")
 
-print("Computer finished at", computer.magicTime())
+local _, _, time = computer.magicTime()
+_, _, _, _, mi, s, ms = time:match("(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)%.(%d+)Z")
+local endtime = mi * 60 * 1000 + s * 1000 + ms
+print("... Finished! It took:", endtime - starttime, "ms")
 c.stopComputer(c)
