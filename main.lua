@@ -153,6 +153,12 @@ end
 --- End of Helpfunctions
 
 
+local modules = {}
+local zw = getComponentsByClass("Manufacturer")
+local zw1 = {}
+for _, res in pairs(zw) do
+	print(res:getType())
+end
 
 local constructors = getComponentsByClass( { "Build_ConstructorMk1_C"  }, false ) --!
 local assemblers = getComponentsByClass( { "Build_AssemblerMk1_C"  }, false ) --!
