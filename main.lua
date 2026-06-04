@@ -7,8 +7,6 @@ local _, _, time = computer.magicTime()
 local _, _, _, _, mi, s, ms = time:match("(%d%d%d%d)%-(%d%d)%-(%d%d)T(%d%d):(%d%d):(%d%d)%.(%d+)Z")
 local starttime = mi * 60 * 1000 + s * 1000 + ms
 
---Lines marked with ! are static, as in non adaptable to new modules
-
 
 ---Start of Helpfunctions
 
@@ -23,19 +21,6 @@ function stringContains(mainString, substring)
  	end
 end
 
---sorts an array so that no elements in it is unique
-function sort(t1)
-	nt1 = {}
-	for i, v in pairs(t1) do
-		if tableHasValue(nt1, v) then
-			local index = find(nt1, v)
-			if index == nil then computer.panic("Sorting error!") end
-		else 
-			nt1[#nt1+1] = v
-		end
-	end
-	return nt1
-end
 
 -- Adds the contents of t2 to t1
 function tableConcat( t1, t2 )
@@ -152,222 +137,187 @@ end
 
 --- End of Helpfunctions
 
-
-local modules = {}
-local zw = getComponentsByClass("Manufacturer")
-local zw1 = {}
-for _, res in pairs(zw) do
-	print(res:getType())
-end
-
-local constructors = getComponentsByClass( { "Build_ConstructorMk1_C"  }, false ) --!
-local assemblers = getComponentsByClass( { "Build_AssemblerMk1_C"  }, false ) --!
-local manufacturer = getComponentsByClass( { "Build_ManufacturerMk1_C"  }, false ) --!
-if #constructors > 0 then cRecipes = constructors[1]:getRecipes() else cRecipes = {} end --!
-if #assemblers > 0 then aRecipes = assemblers[1]:getRecipes() else aRecipes = {} end --!
-if #manufacturer > 0 then mRecipes = manufacturer[1]:getRecipes() else mRecipes = {} end --!
-
-local zw = {}
-zw[1] = rRecipe
-if zw[1] == nil then computer.panic("Target Recipe not recognized: ", zw[1]) end
-rRecipes = {}
-
---first gets all possible recipes to the string, then searches ingredients for the last recipe and adds it to the loop
-
 print("Allocating all possible recipes ...")
+
+--find all recipes in the network sorted by class
+
+local bool = true
+local zw = getComponentsByClass("Manufacturer")
+local zw1 = {zw[1]:getType()}
+local modules = {{zw[1]}}
+local modRec = {}
+
 for _, res in pairs(zw) do
-	local recipes = {}
-	local flag = 0
-	for _, r in pairs(cRecipes) do
-		local prods = r:getProducts()
-		local ing = r:getIngredients()
-		local bool = false
-		for _, i in pairs(ing) do
-			if stringContains(i.type.name, "Ore") then --!
-				bool = true
-				break
+	bool = true
+	for i, tp in pairs(zw1) do
+		if bool and res:getType() == tp then
+			modules[i][#modules[i]+1] = res
+			bool = false
+		end
+	end
+	if bool then
+		modules[#modules+1] = {res}
+		zw1[#zw1+1] = res:getType()
+	end
+end
+
+local modRecopy = {}
+for _, mod in pairs(modules) do 
+	modRec[#modRec+1] = mod[1]:getRecipes()
+	modRecopy[#modRecopy+1] = mod[1]:getRecipes()
+end
+
+--initialize arrays since i cant loop over an empty array
+
+local currentPath = {} -- Top to bottom order in 2nd array!
+
+rRlength = 0
+rRecipes = {} -- endresult
+zw = {} -- stack of established recipes
+zw1 = {} -- corresponding module layer
+for i, _ in pairs(modRec) do
+	rRecipes[i] = {}
+	for _, re in pairs(modRec[i]) do
+		local pro = re:getProducts()
+		for _, r in pairs(pro) do
+			if r.type.name == rRecipe then
+				rRecipes[i][#rRecipes[i]+1] = re
+				currentPath[#currentPath+1] = re
+				zw[#zw+1] = re
+				zw1[#zw1+1] = i
 			end
 		end
-		if not bool then
-			for _, p in pairs(prods) do
-				if p.type.name == res then
-					bool = true
-				end
-			end
-			if bool then
-				if rRecipes[1] == nil then rRecipes[1] = {} end
-				recipes[#recipes+1] = r
-				rRecipes[1][#rRecipes[1]+1] = r
-				flag = 1
-			end
-		end	
-	end	
-	if  flag ~= 1 then
-		for _, r in pairs(aRecipes) do
-			local prods = r:getProducts()
-			local ing = r:getIngredients()
-			local bool = false
-			for _, i in pairs(ing) do
-				if stringContains(i.type.name, "Ore") then
-					bool = true
-					break
-				end
-			end
-			if not bool then
-				for _, p in pairs(prods) do
-					if p.type.name == res then
-						bool = true
-					end
-				end
+	end
+end
+rRlength = #zw
+
+-- then filter out all not needed recipes so we can do another bfs over it later on
+
+local j = 1
+while j <= #zw do
+	for i, _ in pairs(modRecopy) do
+		for h, re in pairs(modRecopy[i]) do
+			if type(re) ~= "string" then
+			bool = true
+			local pro = re:getProducts()
+			local ing = zw[j]:getIngredients()
+			for _, r in pairs(pro) do
 				if bool then
-					if rRecipes[2] == nil then rRecipes[2] = {} end
-					recipes[#recipes+1] = r
-					rRecipes[2][#rRecipes[2]+1] = r
-					flag = 2
-				end
-			end		
-		end
-	elseif flag ~= 2 then
-		for _, r in pairs(mRecipes) do
-			local prods = r:getProducts()
-			local ing = r:getIngredients()
-			local bool = false
-			for _, i in pairs(ing) do
-				if stringContains(i.type.name, "Ore") then
-					bool = true
-					break
-				end
-			end
-			if not bool then
-				for _, p in pairs(prods) do
-					if p.type.name == res then
-						bool = true
+				for _, k in pairs(ing) do
+					-- replace recipe so we dont get duplicates
+					if bool and r.type.name == k.type.name then
+						zw[#zw+1] = re
+						rRecipes[i][#rRecipes[i]+1] = re
+						modRecopy[i][h] = "some bullshit value"
+						bool = false --better break
+						break
 					end
+
 				end
-				if bool then
-					if rRecipes[3] == nil then rRecipes[3] = {} end
-					recipes[#recipes+1] = r
-					rRecipes[3][#rRecipes[3]+1] = r
-					flag = 3
-				end
+				else break end 
+			end
 			end
 		end
 	end
-	
-	
-	for _, r in pairs(recipes) do 
-		next = r:getIngredients()
-		for _, i in pairs(next) do
-			local item = i.type.name
-			if not stringContains(item, "Ore") then
-				zw[#zw+1] = item --loop next item
-			end
-		end
-	end
-end
-print("Done")
-
---here all possible recipes once (but not sorted aka in which order they go)
-for r in pairs(rRecipes) do rRecipes[r] = sort(rRecipes[r]) end
---for r in pairs(rRecipes) do print(r) for t in pairs(rRecipes[r]) do print(rRecipes[r][t].name) end end
-
-
-print("Sorting recipes for efficiency ...")
-local aimRecipe = {}
-if #rRecipes > 0 then
-	for _, r in pairs(rRecipes[#rRecipes]) do
-		if r.name == rRecipe then aimRecipe[#aimRecipe+1] = r end
-	end
+	j = j+1
 end
 
-cPath = {}
-cPath[1] = {}
-for i, r in pairs(aimRecipe) do cPath[1][i] = {0, r} end
+--for r in pairs(rRecipes) do print(r) for t in pairs(rRecipes[r]) do print(rRecipes[r][t].name) end end print(" ")
 
-for c in pairs(cPath) do
-	for d in pairs(cPath[c]) do
-		for e = 2, #cPath[c][d], 1 do --first value is the previous path to this point
-			zw = {}
-			local ing = cPath[c][d][e]:getIngredients()
-			local bool = false
-			for _, i in pairs(ing) do
-				local zw1 = {}
-				for t in pairs(rRecipes) do --optimizable
-					for s in pairs(rRecipes[t]) do
-						if rRecipes[t][s]:getProducts()[1].type.name == i.type.name then
-							zw1[#zw1+1] = rRecipes[t][s]
-						end
-					end
-				end
-				bool = #zw1 > 0
-				zw[#zw+1] = {}
-				for _, t in pairs(zw1) do zw[#zw][#zw[#zw]+1] = t end
-			end
-			local zw1 = {}
-			local zw2 = {}
-			for t in pairs(zw) do  --Permutations
-				for u in pairs(zw[t]) do
-					if #zw1 == 0 then zw2[#zw2+1] = {} zw2[#zw2][#zw2[#zw2]+1] = zw[t][u] end
-					for s in pairs(zw1) do
-						zw2[#zw2+1] = {}
-						for q in pairs(zw1[s]) do
-							zw2[#zw2][#zw2[#zw2]+1] = zw1[s][q]
-						end
-						zw2[#zw2][#zw2[#zw2]+1] = zw[t][u]
-					end
-				end
-				zw1 = {}
-				for s in pairs(zw2) do
-					zw1[#zw1+1] = {}
-					for q in pairs(zw2[s]) do
-						zw1[#zw1][#zw1[#zw1]+1] = zw2[s][q]
-					end
-				end
-				zw2 = {}
-			end --end of permutations
+print("Establishing all permutations ...") -- #Have to take it for granted that the first recipes are the source recipes!
+
+local visitedNodes = {}
+local pathArray = {}
+local origins = {}
+
+while #currentPath ~= 0 do
+	-- find next recipes based on the required ingredients
+	local additionals = 1
+	local ingredient
+	while additionals > 0 do
+		additionals = 0
+		local ing = currentPath[#currentPath]:getIngredients()
+		bool = true
+		for i, _ in pairs(rRecipes) do
 			if bool then
-				if #cPath ~= c+1 then cPath[c+1] = {} end
-				for t in pairs(zw1) do
-					cPath[c+1][#cPath[c+1]+1] = {}
-					cPath[c+1][#cPath[c+1]][#cPath[c+1][#cPath[c+1]]+1] = d
-					for s in pairs(zw1[t]) do
-						cPath[c+1][#cPath[c+1]][#cPath[c+1][#cPath[c+1]]+1] = zw1[t][s]
+			for _, l in pairs(rRecipes[i]) do
+				if bool then
+				local pro = l:getProducts()
+				for ii, j in pairs(ing) do
+					if bool then
+					for _, k in pairs(pro) do
+
+						if k.type.name == j.type.name then
+							for _, r in pairs(visitedNodes) do
+								if l == r then
+									additionals = -1
+								end
+							end
+							if additionals == 0 then
+								bool = false --couldnt i just do additionals > 0?
+								additionals = 1
+								currentPath[#currentPath+1] = l
+								pathArray[#pathArray+1] = {{l}} -- structure is {current_recipes/path{ingredient.name{next_recipe}}}
+								ingredient = ii
+								if #currentPath == 2 then
+									origins[#origins+1] = #pathArray
+								end
+								break
+							else additionals = 0 end
+						end
+						
 					end
+					else break end 
+				end
+				else break end 
+			end
+			else break end 
+		end
+	end
+	additionals = 0
+	visitedNodes[#visitedNodes+1] = table.remove(currentPath, #currentPath) --deleting last one since itself doesnt have any permutations
+	if #pathArray[#currentPath] < ingredient+1 then pathArray[#currentPath][ingredient+1] = {} end
+	pathArray[#currentPath][ingredient+1][#pathArray[#currentPath][ingredient+1]+1] = visitedNodes[#visitedNodes] --save its relation to actually fully develop a tree for the final permutation calculation
+end
+
+print("Almost Done...") -- final permutation
+
+local nextRecipes = {}
+
+for ii, i in pairs(origins) do -- establish all the possible permutations for each layer -> so we need to search next arrays for the wished for ingredient
+	
+	local ending
+	if ii == #origins then ending = #pathArray[i] else ending = origins[ii+1] end
+	local currentPermutations
+	local newCurrentPerms
+	local additions = {}
+	
+	while #additions ~= 0 do
+		local ingredients = additions[1]:getIngredients()
+		for _, ing in pairs(ingredients) do
+
+			for j in range(origin, ending) do -- j is the ingredients index
+				if pathArray[j][1][1].name == ing then
+					additions[#additions+1] = pathArray[j][1][1]
+				if #currentPermutations == 0 then newCurrentPerms[#newCurrentPerms+1] = k 
+				else
+					for _, k in pairs(currentPermutations) do -- idee ist das zuerst alle permutation des ersten ingredients berechnet werden und danach das zweite damit weiterpermutiert
+						newCurrentPerms[#newCurrentPerms+1] = k + pathArray[j][1][1]
+					end 
+				end
 				end
 			end
 		end
+		currentPermutations = {}
+		for _, j in pairs(newCurrentPerms) do -- backtracing?
+			currentPermutations[#currentPermutations+1] = j
+		end
+		table.remove(additions, 1)
 	end
-end
-print("Almost done")
---[[ --all possible Recipes now linked in order
-for c in pairs(cPath) do 
-		for d in pairs(cPath[c]) do 
-		print("c", c, "d", d, "d-ref:", cPath[c][d][1]) 
-			for e = 2, #cPath[c][d], 1 do 
-			print(cPath[c][d][e].name) end
-end end --]]
 
-zw = {}
-rRecipes = {}
---deciphering the links
-for i in pairs(cPath[#cPath]) do
-	local zw1 = i
-	local level = #cPath
-	while zw1 ~= 0 and level > 0 do
-		for e = 2, #cPath[level][zw1], 1 do
-			zw[#zw+1] = cPath[level][zw1][e]
-		end
-		zw1 = cPath[level][zw1][1] --d-ref
-		level = level - 1
-	end
-	if #zw > 0 then 
-		rRecipes[#rRecipes+1] = {}
-		for _, e in pairs(zw) do
-			rRecipes[#rRecipes][#rRecipes[#rRecipes]+1] = e
-		end
-	end
-	zw = {}
+	--search next recipe in the array
 end
+
 print("Done")
 --for r in pairs(rRecipes) do for t in pairs(rRecipes[r]) do print(rRecipes[r][t].name) end end
 
@@ -377,103 +327,56 @@ print("Calculating ratio of recipe to modules ...")
 local a = {}
 local b = {}
 for x in pairs(rRecipes) do
-	a[#a+1] = {0, 0, 0} --!
+	a[#a+1] = {}
+	for z, _ in pairs(modules) do
+		a[#a][#a[#a]+1] = 0
+	end
 	b[#b+1] = {}
 	local res = rRecipes[x][#rRecipes[x]].name
 	local map = {{res, 1.0}}
-	local flag = 0
 	for y = #rRecipes[x], 1, -1 do --_, item in pairs(rRecipes[x]) do 
 		local item = rRecipes[x][y]
 		local ing = item:getIngredients()
-	for _, m in pairs(ing) do
-		for _, n in pairs(rRecipes[x]) do
-			if n:getProducts()[1].type.name == m.type.name then --.potential
-				local flag = 0
-				b[#b][#b[#b]+1] = {}
-				for _, r in pairs(cRecipes) do
-					if n == r then	--!
-						local mul = 1.0
-						for _, mn in pairs(map) do
-							if item.name == mn[1] then
-								mul = mn[2]
-								break
-							end
-						end
-						local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration)) --verhältnis von davor
-						a[#a][1] = a[#a][1] + math.ceil(num)
-						b[#b][#b[#b]] = {m, num, "c"}
-						map[#map+1] = {m.type.name, num}
-						flag = 1
-						break
-					end
-				end
-				if  flag ~= 1 then
-					for _, r in pairs(aRecipes) do
-						if n == r then
-							local mul = 1.0
-							for _, mn in pairs(map) do
-								if item.name == mn[1] then
-									mul = mn[2]
+		for _, m in pairs(ing) do
+			for _, n in pairs(rRecipes[x]) do
+				local o = n:getProducts()
+				for _, p in pairs(o) do
+					if p.type.name == m.type.name then --.potential
+						bool = true
+						b[#b][#b[#b]+1] = {}
+						for q, _ in pairs(modRec) do
+							if bool then
+							for _, r in pairs(modRec[q]) do
+								if bool and n == r then
+									local mul = 1.0
+									for _, mn in pairs(map) do
+										if item.name == mn[1] then
+											mul = mn[2]
+											break
+										end
+									end
+									local num = ((m.amount*(60.0/item.duration))*mul) / (p.amount*(60.0/n.duration))
+									a[#a][2] = a[#a][q] + math.ceil(num)
+									b[#b][#b[#b]] = {m, num, q} --"a"
+									map[#map+1] = {m.type.name, num}
+									bool = false
 									break
 								end
 							end
-							local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration))
-							a[#a][2] = a[#a][2] + math.ceil(num)
-							b[#b][#b[#b]] = {m, num, "a"}
-							map[#map+1] = {m.type.name, num}
-							flag = 2
-							break
-						end
-					end
-				elseif flag ~= 2 then
-					for _, r in pairs(mRecipes) do
-						if n == r then
-							local mul = 1.0
-							for _, mn in pairs(map) do
-								if item.name == mn[1] then
-									mul = mn[2]
-									break
-								end
 							end
-							local num = ((m.amount*(60.0/item.duration))*mul) / (n:getProducts()[1].amount*(60.0/n.duration))
-							a[#a][3] = a[#a][3] + math.ceil(num)
-							b[#b][#b[#b]] = {m, num, "m"}
-							map[#map+1] = {m.type.name, num}
-							flag = 3
-							break
 						end
 					end
 				end
-				break
 			end
-		end
-	end end
-	for _, r in pairs(cRecipes) do --solely to add to result
-		local prods = r:getProducts()
-		for _, p in pairs(prods) do
-			if p.type.name == res then
-				a[#a][1] = a[#a][1] + 1
-				b[#b][#b[#b]] = {p, 1.0, "c"}
-			end
-		end
+		end 
 	end
-	if flag ~= 1 then
-		for _, r in pairs(aRecipes) do
+	for q, _ in pairs(modRec) do --solely to add to result
+		for _, r in pairs(modRec[q]) do
 			local prods = r:getProducts()
 			for _, p in pairs(prods) do
 				if p.type.name == res then
-					a[#a][2] = a[#a][2] + 1
-					b[#b][#b[#b]] = {p, 1.0, "a"}
-				end
-			end
-		end
-	elseif flag ~= 2 then
-		for _, r in pairs(mRecipes) do
-			local prods = r:getProducts()
-			for _, p in pairs(prods) do
-				if p.type.name == res then
-					a[#a][3] = a[#a][3] + 1
-					b[#b][#b[#b]] = {p, 1.0, "m"}
+					a[#a][q] = a[#a][q] + 1
+					b[#b][#b[#b]] = {p, 1.0, q}
 				end
 			end
 		end
@@ -496,35 +399,17 @@ for i in pairs(a) do
 	for e in pairs(a[i]) do difRec[#difRec+1] = {} total[#total+1] = 0 end
 	for e in pairs(b[i]) do
 		local num = b[i][e][2]
-		if b[i][e][3] == "c" then
-			difRec[1][#difRec[1]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
-			total[1] = total[1] + num
-		elseif b[i][e][3] == "a" then
-			difRec[2][#difRec[2]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
-			total[2] = total[2] + num
-		elseif b[i][e][3] == "m" then
-			difRec[3][#difRec[3]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
-			total[3] = total[3] + num
-		end
+		difRec[1][#difRec[1]+1] = {math.ceil(num), b[i][e][1], b[i][e][2], b[i][e][3]}
+		total[b[i][e][3]] = total[b[i][e][3]] + num
 	end
 
 	neededRes[#neededRes][#neededRes[#neededRes]+1] = {}
 	for i in pairs(difRec) do
 		neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]+1] = {}
-		for e in pairs(difRec[i]) do
-			if difRec[i][e][4] == "c" then -- all constr - unique rec * ratio
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
-				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
-				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
-			elseif difRec[i][e][4] == "a" then
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
-				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
-				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
-			elseif difRec[i][e][4] == "m" then
-				neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
-				[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
-				= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
-			end
+		for e in pairs(difRec[i]) do-- all constr - unique rec * ratio
+			neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]
+			[#neededRes[#neededRes][#neededRes[#neededRes]][#neededRes[#neededRes][#neededRes[#neededRes]]]+1]
+			= {(availRes[i] - #difRec[i])*(difRec[i][e][3]/total[i]), difRec[i][e][2], difRec[i][e][4]}
 		end
 	end
 end
